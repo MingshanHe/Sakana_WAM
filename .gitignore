@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Run artifacts (features are ~1.9 GB each; sim episodes / videos)
+outputs/
+logs/
+*.pt
+*.pth
+*.npz
+*.mp4
+*.gif
+*.safetensors
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
