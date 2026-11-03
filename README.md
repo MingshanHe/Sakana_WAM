@@ -60,6 +60,8 @@ Measured (H100, 1 env): ~25 s solver warm-up on first launch, then 0.9× real ti
 
 ## Imagined-trajectory following (work in progress)
 
+**Report (English + 中文): [results/wan2.2-ti2v-5b/REPORT_imagined_flight.md](results/wan2.2-ti2v-5b/REPORT_imagined_flight.md)**
+
 Goal: take off in an indoor Isaac scene, give the first onboard frame + an instruction to Wan2.2, use the
 DiffWAM-Flash features as a latent goal, train an onboard-camera encoder into that latent space, and train a policy
 whose reward is the latent error, so it flies along the imagined video. Baseline: the same error on VAE latents.
@@ -68,9 +70,11 @@ whose reward is the latent error, so it flies along the imagined video. Baseline
 |---|---|
 | 0. Indoor scene, take-off, capture I0 (`sim/takeoff_capture.py`) | done: office, hover 1.21 m, 832x480 I0 |
 | 1. Imagination: Flash features + imagined video (`wan/imagine.py`, `wan/sweep_imagine.py`) | done: official negative prompt + seed sweep gives clear forward motion; picked `approach_s2` 832x480 ([results](results/wan2.2-ti2v-5b/office_imagine/README.md)) |
-| 2. Encoder: (imagined frame t, Z[t]) pairs | todo |
-| 3. Sanity check: latent error separates on-path vs off-path flights | todo |
-| 4. RL policy (PPO), reward = -latent error + progress - crash | todo |
+| 1b. 10 scenarios in HyperDrone ProcTHOR houses (`follow/`) | done: camera-move prompts, 15/20 imaginations move in the instructed direction ([results](results/wan2.2-ti2v-5b/scenarios10/README.md)) |
+| 2. Encoder: (imagined frame t, Z[t]) pairs | done, negative for Flash targets: held-out R² −0.14; same scenes with new noise R² 0.03 → step-0 Flash features are noise-dominated |
+| 3. Latent-error control (rendering-in-the-loop MPC, kinematic) | done: replay with ground truth 9–10/10 in pixel / VAE / encoder space; following Wan videos with VAE goals 9/10, with Flash goals 2/10 |
+| 3b. DiffWAM method (`diffwam/`): features → gen2pose teacher → readout head → fly | done: 450 samples / 80 houses; test ADE 0.52 m vs 0.73 instruction prior; future-slot features carry the signal; flight 13/20 vs 12/20 for the full-video teacher at ~1/10 the cost ([results](results/wan2.2-ti2v-5b/diffwam_gen2pose/README.md)) |
+| 4. RL policy (PPO), reward = -latent error + progress - crash | todo (VAE or encoder space; L2F dynamics instead of kinematics) |
 
 Notes on the indoor scene (Newton backend): Isaac Sim's RTX camera cannot start in this IsaacLab venv (it ships
 USD 26.08, Kit's RTX plugins need 25.11) and H100s have no RT cores, so the Newton Warp renderer is used. The office

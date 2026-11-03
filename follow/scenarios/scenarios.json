@@ -1,0 +1,315 @@
+{
+  "scenarios": [
+    {
+      "id": "s01_room_forward",
+      "house": 1,
+      "motion": "forward",
+      "instruction": "Fast forward dolly shot, first-person view, the camera is moving forward continuously across the living room toward the window on the far wall, passing the dining table on the left, strong forward camera motion, objects get closer and larger every second.",
+      "start": {
+        "house": 1,
+        "pose": [
+          -9.713500355782068,
+          -6.766920309045812,
+          1.2,
+          0.23240463448198836
+        ],
+        "depth_ahead_m": 8.788644790649414,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -7.940889835357666,
+          -8.727401733398438,
+          1.2992650270462036
+        ],
+        "bounds_half": [
+          7.960890293121338,
+          8.848182678222656,
+          1.3492649793624878
+        ]
+      },
+      "instruction_v1": "First-person view: the camera flies straight forward across the living room toward the far wall with the window and pictures, passing to the right of the dining table. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    },
+    {
+      "id": "s02_hallway",
+      "house": 3,
+      "motion": "hallway",
+      "instruction": "Fast forward dolly shot down a hallway, first-person view, the camera is moving forward continuously along the teal rug past the dark dresser on the right, strong forward camera motion, the corridor walls flow past the camera.",
+      "start": {
+        "house": 3,
+        "pose": [
+          -9.205276610591342,
+          -3.1176428313576205,
+          1.2,
+          6.122749300228369
+        ],
+        "depth_ahead_m": 8.058236122131348,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -7.291610240936279,
+          -5.206575870513916,
+          2.0365633964538574
+        ],
+        "bounds_half": [
+          7.412390232086182,
+          5.3014235496521,
+          2.0865635871887207
+        ]
+      },
+      "instruction_v1": "First-person view: the camera flies straight down the hallway along the teal rug, past the dark dresser on the right, toward the end of the corridor. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    },
+    {
+      "id": "s03_doorway",
+      "house": 4,
+      "motion": "doorway",
+      "instruction": "Forward dolly shot through a doorway, first-person view, the camera moves forward continuously through the open door into the next room, the door frame grows larger and passes around the camera, then the camera slows down inside the room.",
+      "start": {
+        "house": 4,
+        "pose": [
+          -8.408289607867871,
+          -5.4926484800961966,
+          1.2,
+          0.176581358795091
+        ],
+        "depth_ahead_m": 8.165878295898438,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -5.11118745803833,
+          -6.178760051727295,
+          1.5779203176498413
+        ],
+        "bounds_half": [
+          5.15181303024292,
+          6.198760509490967,
+          1.6279202699661255
+        ]
+      },
+      "instruction_v1": "First-person view: the camera flies forward through the open doorway into the next room, then slows down and hovers in the middle of that room. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    },
+    {
+      "id": "s04_turn_left",
+      "house": 5,
+      "motion": "turn left",
+      "instruction": "Camera pans to the left while moving forward, first-person view, the camera turns continuously to the left, strong left yaw rotation, the dining table sweeps from the center to the right edge of the frame as the left wall comes into view.",
+      "start": {
+        "house": 5,
+        "pose": [
+          -9.374641165401965,
+          -5.727872643432157,
+          1.2,
+          0.10152643260228936
+        ],
+        "depth_ahead_m": 9.241982460021973,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -5.069109916687012,
+          -4.145877361297607,
+          1.703371286392212
+        ],
+        "bounds_half": [
+          5.189889907836914,
+          4.165877819061279,
+          1.753371238708496
+        ]
+      },
+      "instruction_v1": "First-person view: the camera moves forward slowly while turning steadily to the left, sweeping across the dining table toward the left wall. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    },
+    {
+      "id": "s05_ascend",
+      "house": 6,
+      "motion": "ascend",
+      "instruction": "Crane up shot, first-person view, the camera rises continuously upward toward the ceiling, strong upward camera motion, the bed and furniture move down and out of the bottom of the frame and the ceiling grows larger.",
+      "start": {
+        "house": 6,
+        "pose": [
+          -7.992519659840285,
+          -9.343104362455925,
+          1.2,
+          1.2481912720884147
+        ],
+        "depth_ahead_m": 8.897270202636719,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -5.06149959564209,
+          -5.0393900871276855,
+          1.3031269311904907
+        ],
+        "bounds_half": [
+          5.081500053405762,
+          5.1242499351501465,
+          1.353126883506775
+        ]
+      },
+      "instruction_v1": "First-person view: the camera rises slowly and smoothly toward the ceiling while drifting a little forward over the bedroom, looking straight ahead. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    },
+    {
+      "id": "s06_bed_approach",
+      "house": 7,
+      "motion": "approach",
+      "instruction": "Forward dolly shot into a bedroom, first-person view, the camera moves forward continuously through the doorway toward the bed, the bed gets closer and larger every second, then the camera stops above the foot of the bed.",
+      "start": {
+        "house": 7,
+        "pose": [
+          -6.862014028306293,
+          -4.614084862731609,
+          1.2,
+          6.110462549801701
+        ],
+        "depth_ahead_m": 6.581719398498535,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -4.991499900817871,
+          -3.3295435905456543,
+          1.4512344598770142
+        ],
+        "bounds_half": [
+          5.011500358581543,
+          3.446211814880371,
+          1.5012344121932983
+        ]
+      },
+      "instruction_v1": "First-person view: the camera flies forward through the doorway into the bedroom toward the bed, then stops and hovers above the foot of the bed. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    },
+    {
+      "id": "s07_turn_right",
+      "house": 8,
+      "motion": "turn right",
+      "instruction": "Camera pans to the right while moving forward, first-person view, the camera turns continuously to the right, strong right yaw rotation, the round table with black chairs and the plant sweep from the right edge into the center of the frame.",
+      "start": {
+        "house": 8,
+        "pose": [
+          -3.5881980457759877,
+          -26.126551177005695,
+          1.2,
+          2.9417861004803165
+        ],
+        "depth_ahead_m": 11.10989761352539,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -7.577226638793945,
+          -16.21942901611328,
+          1.6600075960159302
+        ],
+        "bounds_half": [
+          7.693894386291504,
+          16.3402099609375,
+          1.7178949117660522
+        ]
+      },
+      "instruction_v1": "First-person view: the camera moves forward while turning steadily to the right, toward the round table with the black chairs and the plant. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    },
+    {
+      "id": "s08_strafe_right",
+      "house": 9,
+      "motion": "strafe right",
+      "instruction": "Trucking shot to the right, first-person view, the camera slides sideways to the right continuously while facing forward, strong lateral camera motion, the room and the shelf move from right to left across the frame.",
+      "start": {
+        "house": 9,
+        "pose": [
+          -1.2978491802074719,
+          -4.540795675920334,
+          1.2,
+          2.8095386047784703
+        ],
+        "depth_ahead_m": 8.093137741088867,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -4.764500141143799,
+          -4.7455949783325195,
+          1.3412691354751587
+        ],
+        "bounds_half": [
+          4.805125713348389,
+          4.824044227600098,
+          1.3912690877914429
+        ]
+      },
+      "instruction_v1": "First-person view: the camera slides sideways to the right across the room while still facing straight ahead, without turning. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    },
+    {
+      "id": "s09_approach_stop",
+      "house": 10,
+      "motion": "approach+stop",
+      "instruction": "Forward dolly shot, first-person view, the camera moves forward toward the wooden desk with the chair, the desk gets closer and larger, then the camera slows down and stops right in front of the desk.",
+      "start": {
+        "house": 10,
+        "pose": [
+          -4.11551121862773,
+          -8.045426800208826,
+          1.2,
+          3.0681767772205215
+        ],
+        "depth_ahead_m": 7.199634075164795,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -5.713187217712402,
+          -4.876575946807861,
+          1.863053798675537
+        ],
+        "bounds_half": [
+          5.753812789916992,
+          4.976063251495361,
+          1.9130537509918213
+        ]
+      },
+      "instruction_v1": "First-person view: the camera flies forward toward the wooden desk with the chair, slows down, and stops just in front of the desk, hovering still. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    },
+    {
+      "id": "s10_descend",
+      "house": 12,
+      "motion": "descend",
+      "instruction": "Forward and downward camera motion, first-person view, the camera moves forward toward the white table and descends continuously, the table top rises in the frame and gets closer, strong downward camera motion.",
+      "start": {
+        "house": 12,
+        "pose": [
+          -6.125419884528391,
+          -1.2592214714625847,
+          1.2,
+          5.9683552181012285
+        ],
+        "depth_ahead_m": 5.152364730834961,
+        "width": 832,
+        "height": 480,
+        "hfov_deg": 90.0,
+        "fov_arg": 90.0,
+        "bounds_center": [
+          -3.605187177658081,
+          -1.7728325128555298,
+          1.3449091911315918
+        ],
+        "bounds_half": [
+          3.645812749862671,
+          1.8828068971633911,
+          1.394909143447876
+        ]
+      },
+      "instruction_v1": "First-person view: the camera moves forward slowly toward the white table and gently descends to table height, then holds still. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture."
+    }
+  ],
+  "prompt_style": "v2 camera-move style. v1 (a 'smooth, steady, preserve the room, never pass through' tail) produced static videos: s01 optical flow 0.5 px vs 6.8 px with v2."
+}

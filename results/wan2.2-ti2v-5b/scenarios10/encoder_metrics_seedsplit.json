@@ -1,0 +1,45 @@
+{
+  "folds": [
+    {
+      "fold": 0,
+      "held_out": [
+        "seed1 of every scenario"
+      ],
+      "pca_explained": 0.34700703620910645,
+      "train": {
+        "r2": 0.6283881342668842,
+        "slot_top1": 0.4641025641025641,
+        "slot_within2": 1.0,
+        "rank_corr": 0.8254909793280374
+      },
+      "test": {
+        "r2": 0.025819148818062687,
+        "slot_top1": 0.06923076923076923,
+        "slot_within2": 0.28205128205128205,
+        "rank_corr": 0.43029885453062133
+      },
+      "seconds": 59.44091229903279
+    }
+  ],
+  "args": {
+    "scenarios": "scenarios",
+    "out_dir": "encoders_seedsplit",
+    "folds": 1,
+    "steps": 3000,
+    "batch": 32,
+    "lr": 0.0003,
+    "split": "seed"
+  },
+  "mean_train": {
+    "r2": 0.6283881342668842,
+    "slot_top1": 0.4641025641025641,
+    "slot_within2": 1.0,
+    "rank_corr": 0.8254909793280374
+  },
+  "mean_test": {
+    "r2": 0.025819148818062687,
+    "slot_top1": 0.06923076923076923,
+    "slot_within2": 0.28205128205128205,
+    "rank_corr": 0.43029885453062133
+  }
+}

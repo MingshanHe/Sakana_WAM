@@ -1,0 +1,6 @@
+{
+ "A_current": "First-person view: the camera flies straight forward across the living room toward the far wall with the window and pictures, passing to the right of the dining table. Starts exactly from the supplied image. Continuous single first-person shot from a camera about one meter above the floor, smooth and steady, no cuts, no people, no third-person view. Preserve the room, walls, furniture and their positions; never pass through walls or furniture.",
+ "B_office_style": "First-person view: the camera flies straight forward quickly across the living room, travelling about four meters toward the far wall; the dining table and chairs on the left grow larger and pass by, and the window and pictures on the far wall get much closer. Starts exactly from the supplied image. Constant height of about one meter, continuous single shot, no cuts, no people, no third-person view.",
+ "C_camera_motion": "Fast forward dolly shot, first-person view, the camera is moving forward continuously through the room toward the window on the far wall, strong forward camera motion, the room flows past the camera, objects get closer and larger every second.",
+ "D_short": "The camera moves forward fast through the living room toward the far wall."
+}

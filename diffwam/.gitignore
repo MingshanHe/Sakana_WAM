@@ -1,0 +1,4 @@
+# Generated data stays out of git (~32 GB): samples (I0, features, rollouts, teacher), heads, flights.
+# Report assets are copied to ../results/wan2.2-ti2v-5b/diffwam_gen2pose/ by collect_results.py.
+data/
+logs/

@@ -1,0 +1,11 @@
+# Generated data stays out of git (8+ GB): imagined videos, Flash features, encoders, follower runs.
+# Small inputs are tracked: scenarios/scenarios.json, scenarios/*/I0.png, scenarios/*/start.json.
+scenarios/*/seed*/
+scenarios/*/I0_depth.npy
+scenarios/overview.png
+scenarios_raw/
+encoders*/
+follow_runs/
+probe/*/
+logs/
+*.npy
