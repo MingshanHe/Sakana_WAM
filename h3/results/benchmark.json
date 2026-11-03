@@ -1,0 +1,143 @@
+{
+  "pipeline_load_s": 17.26501688803546,
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "placement": "offload",
+  "request": {
+    "prompt": null,
+    "prompt_file": "assets/test_instruction",
+    "image": "assets/test.jpg",
+    "height": 480,
+    "width": 832,
+    "num_frames": 124,
+    "num_inference_steps": 50,
+    "seed": 0,
+    "placement": "offload",
+    "attention_backend": null,
+    "repo": "MiniMaxAI/MiniMax-H3",
+    "slots": 39
+  },
+  "diffwam": {
+    "seconds": {
+      "te_offload": 55.36999552696943,
+      "text_encoder": 0.09584127296693623,
+      "vae_encode": 0.09402155195130035,
+      "dit_compute": 7.642267108953092,
+      "vae_decode": 0.0,
+      "audio_decode": 0.0,
+      "dit_offload": 56.41867501602974,
+      "other": 0.17618488712469116,
+      "total": 119.79698536399519
+    },
+    "transformer_evals": 4,
+    "blocks_per_eval": [
+      50,
+      50,
+      50,
+      36
+    ],
+    "Z_shape": [
+      4,
+      3,
+      39,
+      15,
+      26,
+      5376
+    ]
+  },
+  "diffwam_flash": {
+    "seconds": {
+      "te_offload": 57.09068085398758,
+      "text_encoder": 0.09418993000872433,
+      "vae_encode": 0.0954111940227449,
+      "dit_compute": 1.4559862870373763,
+      "vae_decode": 0.0,
+      "audio_decode": 0.0,
+      "dit_offload": 54.672145051998086,
+      "other": 0.18216880795080215,
+      "total": 113.59058212500531
+    },
+    "transformer_evals": 1,
+    "blocks_per_eval": [
+      36
+    ],
+    "Z_shape": [
+      1,
+      3,
+      39,
+      15,
+      26,
+      5376
+    ]
+  },
+  "full_video": {
+    "seconds": {
+      "te_offload": 52.98654350300785,
+      "text_encoder": 0.09385417000157759,
+      "vae_encode": 0.09526259201811627,
+      "dit_compute": 90.99411998741562,
+      "vae_decode": 2.979312736017164,
+      "audio_decode": 0.2951937940088101,
+      "dit_offload": 51.45935408869991,
+      "other": 0.6451568328193389,
+      "total": 199.54879770398838
+    },
+    "transformer_evals": 49,
+    "blocks_per_eval": [
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50
+    ],
+    "video_shape": [
+      124,
+      480,
+      832,
+      3
+    ]
+  }
+}

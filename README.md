@@ -14,6 +14,7 @@ sakana_dreamer/
     ├── h3_features.py       H3FeatureExtractor: DiT blocks 15/25/35 at evals 0-3, no video decode
     ├── smoke_test_tiny.py   CPU test with a tiny random H3 transformer
     ├── inspect_features.py  stats + PCA image of the features
+    ├── REPORT.md            timing: DiffWAM features vs whole decoded video (+ results/ video, frames)
     └── README.md            details
 ```
 

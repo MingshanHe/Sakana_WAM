@@ -17,3 +17,6 @@ logs/
 .vscode/
 .idea/
 .DS_Store
+
+# Report assets are tracked
+!h3/results/*.mp4

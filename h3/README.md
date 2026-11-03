@@ -1,5 +1,7 @@
 # sakana_dreamer/h3 — MiniMax-H3 feature extraction (DiffWAM-style)
 
+**Timing report (features vs. whole decoded video): [REPORT.md](REPORT.md)**
+
 Reads intermediate DiT features out of the frozen **MiniMax-H3** video model the way
 **DiffWAM** (arXiv 2609.39763, *A Fast and Efficient Navigation World Action Model*) does, without generating a video.
 
@@ -29,14 +31,29 @@ frame count (124 = 5 s → 37 latent frames), and what exactly `A0` is (we retur
   and even at 6 steps only reach 0.889. The target rows are still almost pure noise, so their information comes from
   attention to the keyframe and text — which is what the trained readout must learn to decode.
 
+## Test run on `assets/test.jpg` (2026-11-03, gpu1 H100, `run_test.sh`)
+
+- Input center-cropped 4:3 → 16:9, 832×480; prompt `assets/test_instruction`; 124 frames (5.17 s), 50 steps, seed 0.
+- Features: `Z (4, 3, 39, 15, 26, 5376)`, `A0 (4, 3, 1, 15, 26, 5376)`; 68 s with warm page cache
+  (eval 0: 46 s incl. offload swap, evals 1–3: ~2 s each).
+- Whole video (same request + seed, `generate_video.py`): 157 s. Keeps the room layout and ends in a hover at the
+  whiteboard, but flies *through* the centre felt panel around 3.5–4.5 s — it does not respect solid obstacles.
+
 ## Files
 
 - `h3_features.py` — `H3FeatureExtractor` (hooks + early stop + reshape) and a CLI around the diffusers
   `ModularPipeline`. Output `.pt`:
-  - `Z`  `(K, L, T, H, W, 5376)` target-video tokens (bf16), e.g. `(4, 3, 37, 15, 26, 5376)` ≈ 1.9 GB
+  - `Z`  `(K, L, 39, H, W, 5376)` target-video tokens (bf16) on DiffWAM's 39 slots `slot_time_s = j·5/38 s`
+    (identity + 38 future poses over 5 s). H3 itself gives 37 non-uniform latents for 5 s (`5n+2` is never 39,
+    `slot_time_native_s`), linearly resampled in time; `--slots 0` keeps the native 37.
   - `A0` `(K, L, 1, H, W, 5376)` first-frame keyframe tokens (`None` without `--image`)
   - `timestep_Z`, `timestep_A0` per-token noise level each block saw (H3 timestep = 1 − sigma, 0 = pure noise)
   - `layout`, `eval_seconds`, `total_seconds`, `request`
+- `generate_video.py` — runs the *same* request (image, prompt, canvas, steps, seed) to the end and VAE-decodes it:
+  the full video the features were taken from (DiffWAM's teacher rollout). Writes `.mp4` (with H3's generated audio),
+  `_input.png` (the exact first frame fed to H3) and `_frames.png` (contact sheet).
+- `run_test.sh` — end-to-end test on `assets/test.jpg` + `assets/test_instruction`: smoke test → features + PCA →
+  whole video. Inputs are center-cropped to 16:9 (H3 would otherwise stretch a 4:3 photo onto the 832×480 canvas).
 - `smoke_test_tiny.py` — CPU test with a tiny random H3 transformer + the real layout/scheduler code. Checks the hooked
   features are bit-identical to an un-hooked run and that exactly 3×50 + 36 blocks execute. **Passes.**
 - `inspect_features.py` — stats per (eval, layer) + PCA→RGB image of every token grid.
@@ -46,6 +63,12 @@ frame count (124 = 5 s → 37 latent frames), and what exactly `A0` is (we retur
 Environment: conda env `sakana_dreamer` (`conda activate sakana_dreamer`; Python 3.11 from conda-forge, torch 2.11 cu128, diffusers 0.42.0.dev0 from git main — H3 is only on main).
 
 ## Run
+
+```bash
+# the whole test (features + decoded video) on the repo's test image, from a login node:
+srun -p a3 --gres=gpu:1 -c 16 --mem=300G -t 1:30:00 bash ~/sakana_dreamer/h3/run_test.sh
+# outputs/test_features.pt, test_features_pca.png, test_video.mp4, test_video_frames.png, test_video_input.png
+```
 
 ```bash
 cd ~/sakana_dreamer/h3

@@ -30,6 +30,11 @@ import torch
 
 DIFFWAM_LAYERS = (15, 25, 35)
 DIFFWAM_EVALS = (0, 1, 2, 3)
+# DiffWAM (Sec. 3.1, Eq. 6): identity pose + 38 future poses over a nominal 5 s horizon, T_v = 39 video-time slots.
+DIFFWAM_SLOTS, DIFFWAM_HORIZON_S = 39, 5.0
+H3_FPS = 24
+# Pixel frames packed into each latent frame, repeating per 17-frame VAE chunk (diffusers `_ROPE_FRAMES_PER_LATENT`).
+H3_FRAMES_PER_LATENT = (1, 4, 4, 4, 4)
 REPO_ID = "MiniMaxAI/MiniMax-H3"
 
 
@@ -244,6 +249,47 @@ def load_pipeline(placement: str = "offload", repo: str = REPO_ID, attention_bac
     return pipe
 
 
+def latent_slot_times(num_latent_frames: int, fps: float = H3_FPS) -> torch.Tensor:
+    """Time [s] of each H3 target latent frame: the centre of the pixel frames it packs (1, 4, 4, 4, 4 per chunk)."""
+    times, frame = [], 0
+    for i in range(num_latent_frames):
+        span = H3_FRAMES_PER_LATENT[i % len(H3_FRAMES_PER_LATENT)]
+        times.append((frame + (span - 1) / 2) / fps)
+        frame += span
+    return torch.tensor(times)
+
+
+def resample_slots(z: torch.Tensor, src_t: torch.Tensor, dst_t: torch.Tensor, dim: int = 2) -> torch.Tensor:
+    """Linearly interpolate `z` along `dim` from slot times `src_t` to `dst_t` (clamped to the source range)."""
+    dst_t = dst_t.clamp(src_t[0], src_t[-1])
+    hi = torch.searchsorted(src_t, dst_t).clamp(1, len(src_t) - 1)
+    lo = hi - 1
+    w = ((dst_t - src_t[lo]) / (src_t[hi] - src_t[lo])).to(torch.float32)
+    shape = [1] * z.ndim
+    shape[dim] = -1
+    w = w.view(shape)
+    out = z.index_select(dim, lo).float() * (1 - w) + z.index_select(dim, hi).float() * w
+    return out.to(z.dtype)
+
+
+def to_diffwam_slots(feats: dict, num_slots: int = DIFFWAM_SLOTS, horizon_s: float = DIFFWAM_HORIZON_S) -> dict:
+    """Resample Z (and its timesteps) from H3's native latent slots onto `num_slots` uniform times over the horizon.
+
+    H3 gives 37 target latents for a 5 s request (5n + 2 is never 39), non-uniformly spaced; DiffWAM reads 39
+    slots aligned with its 39 poses at t = j * horizon / 38. Pass `num_slots=0` to keep the native slots.
+    """
+    native_t = latent_slot_times(feats["Z"].shape[2])
+    feats["slot_time_native_s"] = native_t
+    if not num_slots:
+        feats["slot_time_s"] = native_t
+        return feats
+    target_t = torch.linspace(0.0, horizon_s, num_slots)
+    feats["Z"] = resample_slots(feats["Z"], native_t, target_t, dim=2)
+    feats["timestep_Z"] = resample_slots(feats["timestep_Z"], native_t, target_t, dim=1)
+    feats["slot_time_s"] = target_t
+    return feats
+
+
 def extract(
     pipe,
     prompt: str,
@@ -255,6 +301,7 @@ def extract(
     layers: tuple[int, ...] = DIFFWAM_LAYERS,
     evals: tuple[int, ...] = DIFFWAM_EVALS,
     seed: int = 0,
+    num_slots: int = DIFFWAM_SLOTS,
 ) -> dict:
     kwargs = dict(
         prompt=prompt,
@@ -270,7 +317,7 @@ def extract(
     t0 = time.perf_counter()
     with H3FeatureExtractor(pipe.transformer, layers=layers, evals=evals) as ext:
         ext.run(lambda: pipe(**kwargs))
-    feats = ext.result()
+    feats = to_diffwam_slots(ext.result(), num_slots)
     feats["total_seconds"] = time.perf_counter() - t0
     feats["request"] = {k: v for k, v in kwargs.items() if k not in ("generator", "image", "output")}
     feats["request"]["seed"] = seed
@@ -278,33 +325,73 @@ def extract(
     return feats
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--prompt", required=True)
+def prepare_image(path: str, height: int, width: int):
+    """Load an image and center-crop it to the canvas aspect ratio, then resize.
+
+    The H3 pipeline *stretches* a keyframe onto the canvas, so a 4:3 photo on the 16:9 DiffWAM canvas (480x832) would
+    be distorted; cropping first keeps the scene geometry.
+    """
+    from diffusers.utils import load_image
+
+    image = load_image(path)
+    src_w, src_h = image.size
+    if src_w * height > src_h * width:  # too wide
+        crop_w = round(src_h * width / height)
+        left = (src_w - crop_w) // 2
+        image = image.crop((left, 0, left + crop_w, src_h))
+    else:  # too tall
+        crop_h = round(src_w * height / width)
+        top = (src_h - crop_h) // 2
+        image = image.crop((0, top, src_w, top + crop_h))
+    return image.resize((width, height), resample=3)  # bicubic
+
+
+def add_request_args(parser: argparse.ArgumentParser):
+    """CLI arguments shared by the feature extractor and the full-video generator."""
+    prompt = parser.add_mutually_exclusive_group(required=True)
+    prompt.add_argument("--prompt")
+    prompt.add_argument("--prompt-file", help="Text file holding the prompt, e.g. assets/test_instruction.")
     parser.add_argument("--image", help="Initial RGB observation (fl2va). Omit for text-only (t2va).")
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--width", type=int, default=832)
     parser.add_argument("--num-frames", type=int, default=124, help="Snapped to 17n+5; 124 = 5 s at 24 fps.")
     parser.add_argument("--num-inference-steps", type=int, default=50)
-    parser.add_argument("--layers", type=int, nargs="+", default=list(DIFFWAM_LAYERS))
-    parser.add_argument("--evals", type=int, nargs="+", default=list(DIFFWAM_EVALS), help="DiffWAM-Flash: --evals 0")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--placement", choices=["offload", "multi"], default="offload")
     parser.add_argument("--attention-backend", default=None, help='e.g. "_flash_3_hub" on H100')
     parser.add_argument("--repo", default=REPO_ID)
+
+
+def resolve_request(args) -> tuple[str, object]:
+    """(prompt, image) from parsed `add_request_args` arguments."""
+    prompt = args.prompt
+    if args.prompt_file:
+        with open(args.prompt_file) as f:
+            prompt = f.read().strip()
+    image = prepare_image(args.image, args.height, args.width) if args.image else None
+    return prompt, image
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    add_request_args(parser)
+    parser.add_argument("--layers", type=int, nargs="+", default=list(DIFFWAM_LAYERS))
+    parser.add_argument("--evals", type=int, nargs="+", default=list(DIFFWAM_EVALS), help="DiffWAM-Flash: --evals 0")
+    parser.add_argument(
+        "--slots", type=int, default=DIFFWAM_SLOTS,
+        help="Resample Z to this many uniform slots over 5 s (DiffWAM T_v = 39); 0 keeps H3's native 37 latents.",
+    )
     parser.add_argument("--out", default="features.pt")
     args = parser.parse_args()
 
-    from diffusers.utils import load_image
-
+    prompt, image = resolve_request(args)
     t0 = time.perf_counter()
     pipe = load_pipeline(args.placement, args.repo, args.attention_backend)
     print(f"loaded pipeline in {time.perf_counter() - t0:.1f}s")
 
-    image = load_image(args.image) if args.image else None
     feats = extract(
         pipe,
-        args.prompt,
+        prompt,
         image=image,
         height=args.height,
         width=args.width,
@@ -313,11 +400,14 @@ def main():
         layers=tuple(args.layers),
         evals=tuple(args.evals),
         seed=args.seed,
+        num_slots=args.slots,
     )
     torch.save(feats, args.out)
 
     print(f"saved {args.out}")
     print(f"  Z  {tuple(feats['Z'].shape)}  (K, L, T, H, W, C)")
+    t = feats["slot_time_s"]
+    print(f"  slots: {len(t)} at {t[0]:.3f}..{t[-1]:.3f} s (native H3 latents: {len(feats['slot_time_native_s'])})")
     if feats["A0"] is not None:
         print(f"  A0 {tuple(feats['A0'].shape)}  (K, L, N_keyframes, H, W, C)")
     print(f"  layout {feats['layout']}")
