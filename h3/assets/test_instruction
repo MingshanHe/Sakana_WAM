@@ -1,0 +1,1 @@
+Continuous first-person view from the forward camera of a small drone. Use the supplied image as the first frame. Preserve the room, furniture, obstacle shapes and positions. Smooth physical camera translation, no cuts, no zoom-only motion, no teleportation, no third-person drone. Pass through visible open space without intersecting solid objects. End in a stationary hover. 
