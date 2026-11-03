@@ -19,4 +19,4 @@ logs/
 .DS_Store
 
 # Report assets are tracked
-!h3/results/*.mp4
+!results/**/*.mp4

@@ -1,7 +1,7 @@
 # MiniMax-H3: DiffWAM hidden features vs. the whole decoded video
 
 **Date:** 2026-11-03. **Hardware:** 1× NVIDIA H100 80GB (Slurm `gpu1`), CPU offload.
-**Code:** `h3/h3_features.py`, `h3/generate_video.py`, `h3/benchmark.py`. **Raw numbers:** [`results/benchmark.json`](results/benchmark.json)
+**Code:** `h3/h3_features.py`, `h3/generate_video.py`, `h3/benchmark.py`. **Raw numbers:** [`results/h3/benchmark.json`](../results/h3/benchmark.json)
 
 ## TL;DR
 
@@ -23,7 +23,7 @@
 ## Setup
 
 - **Input:** [`assets/test.jpg`](assets/test.jpg) (1707×1280), center-cropped to 16:9 and resized to 832×480 so H3
-  does not stretch it ([what H3 actually saw](results/test_video_input.jpg)). Prompt: [`assets/test_instruction`](assets/test_instruction).
+  does not stretch it ([what H3 actually saw](../results/h3/test_video_input.jpg)). Prompt: [`assets/test_instruction`](assets/test_instruction).
 - **Request:** `fl2va` (first-frame keyframe + text), 124 frames = 5.17 s at 24 fps → 37 H3 latent frames,
   50-point schedule (49 evaluations), seed 0. All three modes use the same request and seed, so they share the
   same noise: the video is exactly the completed rollout whose features DiffWAM reads.
@@ -61,10 +61,10 @@ Notes:
 
 ## Results
 
-**Whole decoded video:** [`results/test_video.mp4`](results/test_video.mp4) (with H3's generated audio).
+**Whole decoded video:** [`results/h3/test_video.mp4`](../results/h3/test_video.mp4) (with H3's generated audio).
 Frames every 0.5 s:
 
-![frames](results/test_video_frames.jpg)
+![frames](../results/h3/test_video_frames.jpg)
 
 The video keeps the room, the felt partitions, the whiteboard and the ceiling lights, with smooth forward camera
 motion that ends in a hover at the whiteboard. However, between ~3.5 s and 4.5 s the camera **flies through the
@@ -76,7 +76,7 @@ which is what DiffWAM's geometry-guided distillation is for.
 **Hidden features** (PCA → RGB of block-15/25/35 tokens, rows = (eval, block); first column = `A0` keyframe
 tokens, then the first target slots):
 
-![pca](results/test_features_pca.jpg)
+![pca](../results/h3/test_features_pca.jpg)
 
 - `A0` (keyframe tokens) clearly encodes the scene layout: the three panels and the whiteboard.
 - `Z` (future-slot tokens) looks mostly like noise. H3's shift-12 schedule keeps schedule indices 0–3 at

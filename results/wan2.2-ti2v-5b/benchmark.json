@@ -1,0 +1,73 @@
+{
+  "pipeline_load_s": 12.99118950398406,
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "peak_memory_gb": 34.35898368,
+  "request": {
+    "prompt": null,
+    "prompt_file": "../h3/assets/test_instruction",
+    "image": "../h3/assets/test.jpg",
+    "height": 480,
+    "width": 832,
+    "num_frames": 121,
+    "num_inference_steps": 50,
+    "guidance_scale": 5.0,
+    "seed": 0,
+    "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+    "slots": 39
+  },
+  "diffwam": {
+    "seconds": {
+      "text_encoder": 0.049514275044202805,
+      "vae_encode": 0.01951109303627163,
+      "dit_compute": 3.235185557976365,
+      "vae_decode": 0.0,
+      "other": 0.1216756229987368,
+      "total": 3.4258865490555763
+    },
+    "transformer_passes": 7,
+    "Z_shape": [
+      4,
+      3,
+      39,
+      15,
+      26,
+      3072
+    ]
+  },
+  "diffwam_flash": {
+    "seconds": {
+      "text_encoder": 0.0478715380304493,
+      "vae_encode": 0.019179597962647676,
+      "dit_compute": 0.3799781780107878,
+      "vae_decode": 0.0,
+      "other": 0.061614719044882804,
+      "total": 0.5086440330487676
+    },
+    "transformer_passes": 1,
+    "Z_shape": [
+      1,
+      3,
+      39,
+      15,
+      26,
+      3072
+    ]
+  },
+  "full_video": {
+    "seconds": {
+      "text_encoder": 0.047996038978453726,
+      "vae_encode": 0.018960335000883788,
+      "dit_compute": 42.84905649104621,
+      "vae_decode": 4.542362798994873,
+      "other": 1.5135136689641513,
+      "total": 48.971889332984574
+    },
+    "transformer_passes": 100,
+    "video_shape": [
+      121,
+      480,
+      832,
+      3
+    ]
+  }
+}

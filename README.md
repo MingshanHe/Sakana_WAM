@@ -14,8 +14,15 @@ sakana_dreamer/
     ├── h3_features.py       H3FeatureExtractor: DiT blocks 15/25/35 at evals 0-3, no video decode
     ├── smoke_test_tiny.py   CPU test with a tiny random H3 transformer
     ├── inspect_features.py  stats + PCA image of the features
-    ├── REPORT.md            timing: DiffWAM features vs whole decoded video (+ results/ video, frames)
+    ├── REPORT.md            timing: DiffWAM features vs whole decoded video
     └── README.md            details
+├── wan/                     the same DiffWAM read-out on Wan2.2-TI2V-5B (5B, fits one H100, no offload)
+│   ├── wan_features.py      WanFeatureExtractor: blocks 9/15/21, conditional CFG pass, steps 0-3
+│   └── benchmark.py         timing + full video
+└── results/                 per-model test results on h3/assets/test.jpg
+    ├── README.md            H3 vs Wan comparison (timing + video quality)
+    ├── h3/                  video, frames, input, PCA, benchmark.json
+    └── wan2.2-ti2v-5b/      video, frames, input, benchmark.json
 ```
 
 Two environments, on purpose: Isaac Sim 6.2 needs Python 3.12 and pins its own torch, while the H3 code needs
