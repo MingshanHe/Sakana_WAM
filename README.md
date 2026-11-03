@@ -9,6 +9,10 @@ sakana_dreamer/
 │   ├── drone_scene.py       scene cfg: Crazyflie + onboard RGB-D camera + random red-pillar field
 │   ├── controller.py        Lee geometric velocity controller -> body wrench (thrust + torque)
 │   ├── run_drone_test.py    fly the scenario, record onboard video / depth / pose
+│   ├── indoor_scene.py      Isaac Sim indoor USD (office, hospital, ...) made visual-only for Newton
+│   ├── survey_indoor.py     render candidate take-off spots in an indoor scene
+│   ├── takeoff_capture.py   take off, hover, capture the first onboard frame I0 (832x480) + depth + pose
+│   ├── prompts/             instructions for the video world model
 │   └── outputs/<run>/       onboard.mp4, obs_first.png, episode.npz
 └── h3/                      MiniMax-H3 feature extraction (env: conda `sakana_dreamer`, Python 3.11)
     ├── h3_features.py       H3FeatureExtractor: DiT blocks 15/25/35 at evals 0-3, no video decode
@@ -18,7 +22,9 @@ sakana_dreamer/
     └── README.md            details
 ├── wan/                     the same DiffWAM read-out on Wan2.2-TI2V-5B (5B, fits one H100, no offload)
 │   ├── wan_features.py      WanFeatureExtractor: blocks 9/15/21, conditional CFG pass, steps 0-3
-│   └── benchmark.py         timing + full video
+│   ├── benchmark.py         timing + full video
+│   ├── imagine.py           I0 + instruction -> Flash / DiffWAM features + the imagined video (same seed)
+│   └── sweep_imagine.py     prompt x seed x resolution sweep, scored by optical-flow camera motion
 └── results/                 per-model test results on h3/assets/test.jpg
     ├── README.md            H3 vs Wan comparison (timing + video quality)
     ├── h3/                  video, frames, input, PCA, benchmark.json
@@ -51,6 +57,26 @@ cd ~/sakana_dreamer/sim
 ```
 
 Measured (H100, 1 env): ~25 s solver warm-up on first launch, then 0.9× real time with the camera at 25 Hz.
+
+## Imagined-trajectory following (work in progress)
+
+Goal: take off in an indoor Isaac scene, give the first onboard frame + an instruction to Wan2.2, use the
+DiffWAM-Flash features as a latent goal, train an onboard-camera encoder into that latent space, and train a policy
+whose reward is the latent error, so it flies along the imagined video. Baseline: the same error on VAE latents.
+
+| Phase | Status |
+|---|---|
+| 0. Indoor scene, take-off, capture I0 (`sim/takeoff_capture.py`) | done: office, hover 1.21 m, 832x480 I0 |
+| 1. Imagination: Flash features + imagined video (`wan/imagine.py`, `wan/sweep_imagine.py`) | done: official negative prompt + seed sweep gives clear forward motion; picked `approach_s2` 832x480 ([results](results/wan2.2-ti2v-5b/office_imagine/README.md)) |
+| 2. Encoder: (imagined frame t, Z[t]) pairs | todo |
+| 3. Sanity check: latent error separates on-path vs off-path flights | todo |
+| 4. RL policy (PPO), reward = -latent error + progress - crash | todo |
+
+Notes on the indoor scene (Newton backend): Isaac Sim's RTX camera cannot start in this IsaacLab venv (it ships
+USD 26.08, Kit's RTX plugins need 25.11) and H100s have no RT cores, so the Newton Warp renderer is used. The office
+USD imports as invisible collision shapes plus a degenerate collision plane, so `make_environment_visual_only()`
+flags every environment shape VISIBLE only: the camera sees the office, but the drone collides only with the floor
+(crashes must be detected from the onboard depth).
 
 ## H3 features (`h3/`)
 

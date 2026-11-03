@@ -32,7 +32,14 @@ def newton_physics_cfg() -> NewtonCfg:
     )
 
 
-def onboard_camera_cfg(width: int = 416, height: int = 240, hfov_deg: float = 90.0, update_period: float = 0.0):
+def physx_physics_cfg():
+    from isaaclab_physx.physics import PhysxCfg
+
+    return PhysxCfg()
+
+
+def onboard_camera_cfg(width: int = 416, height: int = 240, hfov_deg: float = 90.0, update_period: float = 0.0,
+                       renderer: str = "newton"):
     """Forward-looking pinhole camera on the drone body.
 
     Kit-less, the prim is not moved by the Newton body: the runner sets its world pose from the body pose every
@@ -54,8 +61,17 @@ def onboard_camera_cfg(width: int = 416, height: int = 240, hfov_deg: float = 90
         ),
         # "world" convention: camera looks along +X of its parent with +Z up, i.e. along the drone's nose.
         offset=CameraCfg.OffsetCfg(pos=CAMERA_OFFSET, rot=(0.0, 0.0, 0.0, 1.0), convention="world"),
-        renderer_cfg=NewtonWarpRendererCfg(depth_clipping_behavior="max"),
+        renderer_cfg=_renderer_cfg(renderer),
     )
+
+
+def _renderer_cfg(renderer: str):
+    """"newton": Newton Warp ray tracer (kit-less, any GPU). "rtx": Isaac Sim RTX (needs the Kit app)."""
+    if renderer == "rtx":
+        from isaaclab_physx.renderers import IsaacRtxRendererCfg
+
+        return IsaacRtxRendererCfg(depth_clipping_behavior="max")
+    return NewtonWarpRendererCfg(depth_clipping_behavior="max")
 
 
 def pillar_layout(

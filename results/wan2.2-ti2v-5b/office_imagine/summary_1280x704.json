@@ -1,0 +1,30 @@
+{
+  "prompts": {
+    "approach": "First-person dolly shot: the camera travels forward through the office toward the desks at the end of the aisle, getting much closer to them, then slows down and holds still in front of them. Starts exactly from the supplied image. Constant height of about one meter, steady and smooth, continuous single shot, no cuts, no people, no third-person view. Preserve the room, walls, desks, chairs and plants."
+  },
+  "negative": "\u8272\u8c03\u8273\u4e3d\uff0c\u8fc7\u66dd\uff0c\u9759\u6001\uff0c\u7ec6\u8282\u6a21\u7cca\u4e0d\u6e05\uff0c\u5b57\u5e55\uff0c\u98ce\u683c\uff0c\u4f5c\u54c1\uff0c\u753b\u4f5c\uff0c\u753b\u9762\uff0c\u9759\u6b62\uff0c\u6574\u4f53\u53d1\u7070\uff0c\u6700\u5dee\u8d28\u91cf\uff0c\u4f4e\u8d28\u91cf\uff0cJPEG\u538b\u7f29\u6b8b\u7559\uff0c\u4e11\u964b\u7684\uff0c\u6b8b\u7f3a\u7684\uff0c\u591a\u4f59\u7684\u624b\u6307\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u624b\u90e8\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u8138\u90e8\uff0c\u7578\u5f62\u7684\uff0c\u6bc1\u5bb9\u7684\uff0c\u5f62\u6001\u7578\u5f62\u7684\u80a2\u4f53\uff0c\u624b\u6307\u878d\u5408\uff0c\u9759\u6b62\u4e0d\u52a8\u7684\u753b\u9762\uff0c\u6742\u4e71\u7684\u80cc\u666f\uff0c\u4e09\u6761\u817f\uff0c\u80cc\u666f\u4eba\u5f88\u591a\uff0c\u5012\u7740\u8d70\uff0cdrone, quadcopter, aircraft, hand, person, people, static camera, still image",
+  "runs": [
+    {
+      "name": "approach_s1_1280x704",
+      "prompt": "approach",
+      "seed": 1,
+      "resolution": "1280x704",
+      "seconds": 134.84884699899703,
+      "flow_px": 1.7275441884994507,
+      "divergence": 0.013465599156916142,
+      "curl": 7.746959454379976e-05,
+      "end_change": 0.1060388833284378
+    },
+    {
+      "name": "approach_s2_1280x704",
+      "prompt": "approach",
+      "seed": 2,
+      "resolution": "1280x704",
+      "seconds": 132.7662997370353,
+      "flow_px": 2.891942262649536,
+      "divergence": 0.023307684808969498,
+      "curl": 0.0009154152940027416,
+      "end_change": 0.14244535565376282
+    }
+  ]
+}

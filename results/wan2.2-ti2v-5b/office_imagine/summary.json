@@ -1,0 +1,109 @@
+{
+  "prompts": {
+    "forward": "First-person view: the camera flies straight forward quickly along the open office aisle, travelling about five meters; the desks and chairs ahead grow larger and pass by on both sides. Starts exactly from the supplied image. Constant height of about one meter, steady and smooth, continuous single shot, no cuts, no people, no third-person view. Preserve the room, walls, desks, chairs and plants.",
+    "forward_right": "First-person view: the camera flies forward along the office aisle for three seconds, then turns smoothly to the right by ninety degrees and continues forward slowly. Starts exactly from the supplied image. Constant height of about one meter, steady and smooth, continuous single shot, no cuts, no people, no third-person view. Preserve the room, walls, desks, chairs and plants.",
+    "approach": "First-person dolly shot: the camera travels forward through the office toward the desks at the end of the aisle, getting much closer to them, then slows down and holds still in front of them. Starts exactly from the supplied image. Constant height of about one meter, steady and smooth, continuous single shot, no cuts, no people, no third-person view. Preserve the room, walls, desks, chairs and plants."
+  },
+  "negative": "\u8272\u8c03\u8273\u4e3d\uff0c\u8fc7\u66dd\uff0c\u9759\u6001\uff0c\u7ec6\u8282\u6a21\u7cca\u4e0d\u6e05\uff0c\u5b57\u5e55\uff0c\u98ce\u683c\uff0c\u4f5c\u54c1\uff0c\u753b\u4f5c\uff0c\u753b\u9762\uff0c\u9759\u6b62\uff0c\u6574\u4f53\u53d1\u7070\uff0c\u6700\u5dee\u8d28\u91cf\uff0c\u4f4e\u8d28\u91cf\uff0cJPEG\u538b\u7f29\u6b8b\u7559\uff0c\u4e11\u964b\u7684\uff0c\u6b8b\u7f3a\u7684\uff0c\u591a\u4f59\u7684\u624b\u6307\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u624b\u90e8\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u8138\u90e8\uff0c\u7578\u5f62\u7684\uff0c\u6bc1\u5bb9\u7684\uff0c\u5f62\u6001\u7578\u5f62\u7684\u80a2\u4f53\uff0c\u624b\u6307\u878d\u5408\uff0c\u9759\u6b62\u4e0d\u52a8\u7684\u753b\u9762\uff0c\u6742\u4e71\u7684\u80cc\u666f\uff0c\u4e09\u6761\u817f\uff0c\u80cc\u666f\u4eba\u5f88\u591a\uff0c\u5012\u7740\u8d70\uff0cdrone, quadcopter, aircraft, hand, person, people, static camera, still image",
+  "runs": [
+    {
+      "name": "forward_s0_832x480",
+      "prompt": "forward",
+      "seed": 0,
+      "resolution": "832x480",
+      "seconds": 50.19587896502344,
+      "flow_px": 1.9120745658874512,
+      "divergence": -1.3654974281962495e-05,
+      "curl": -5.627032805932686e-05,
+      "end_change": 0.04798978567123413
+    },
+    {
+      "name": "forward_s1_832x480",
+      "prompt": "forward",
+      "seed": 1,
+      "resolution": "832x480",
+      "seconds": 48.90449554397492,
+      "flow_px": 8.3713960647583,
+      "divergence": 0.06258686631917953,
+      "curl": 0.016667630523443222,
+      "end_change": 0.24596711993217468
+    },
+    {
+      "name": "forward_s2_832x480",
+      "prompt": "forward",
+      "seed": 2,
+      "resolution": "832x480",
+      "seconds": 48.97909964097198,
+      "flow_px": 6.0197649002075195,
+      "divergence": 0.043005768209695816,
+      "curl": 0.0009808021131902933,
+      "end_change": 0.1933409720659256
+    },
+    {
+      "name": "forward_right_s0_832x480",
+      "prompt": "forward_right",
+      "seed": 0,
+      "resolution": "832x480",
+      "seconds": 48.94411018700339,
+      "flow_px": 2.569702386856079,
+      "divergence": -7.018686301307753e-05,
+      "curl": 0.0008421755628660321,
+      "end_change": 0.0542914904654026
+    },
+    {
+      "name": "forward_right_s1_832x480",
+      "prompt": "forward_right",
+      "seed": 1,
+      "resolution": "832x480",
+      "seconds": 49.03538304398535,
+      "flow_px": 5.976318836212158,
+      "divergence": 0.04167701303958893,
+      "curl": -0.0024998565204441547,
+      "end_change": 0.1615496575832367
+    },
+    {
+      "name": "forward_right_s2_832x480",
+      "prompt": "forward_right",
+      "seed": 2,
+      "resolution": "832x480",
+      "seconds": 49.03205229603918,
+      "flow_px": 3.797680139541626,
+      "divergence": 0.007825247012078762,
+      "curl": -0.0003158252511639148,
+      "end_change": 0.1192910373210907
+    },
+    {
+      "name": "approach_s0_832x480",
+      "prompt": "approach",
+      "seed": 0,
+      "resolution": "832x480",
+      "seconds": 48.95092246902641,
+      "flow_px": 4.968507289886475,
+      "divergence": 0.02701708860695362,
+      "curl": 0.0016253271605819464,
+      "end_change": 0.14805005490779877
+    },
+    {
+      "name": "approach_s1_832x480",
+      "prompt": "approach",
+      "seed": 1,
+      "resolution": "832x480",
+      "seconds": 48.96785565599566,
+      "flow_px": 6.992491245269775,
+      "divergence": 0.051893364638090134,
+      "curl": 0.00814211554825306,
+      "end_change": 0.24988578259944916
+    },
+    {
+      "name": "approach_s2_832x480",
+      "prompt": "approach",
+      "seed": 2,
+      "resolution": "832x480",
+      "seconds": 49.02105410001241,
+      "flow_px": 8.359619140625,
+      "divergence": 0.055260736495256424,
+      "curl": -0.0013170379679650068,
+      "end_change": 0.22311769425868988
+    }
+  ]
+}
