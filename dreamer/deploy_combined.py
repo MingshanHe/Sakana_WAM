@@ -8,6 +8,9 @@ Each arm flies `--repeats` drones per sample for `--seconds` s (plans cover 5 s,
   prior+dreamer     instruction-prior plan (mean training trajectory of the instruction type) -> Dreamer actor
   diffwam+dreamer   DiffWAM plan -> Dreamer actor (the combined workflow)
   diffwam+dreamer+mpc  the same, with the world-model shield (best of K candidate actions by imagined return)
+  openfly+...       OpenFly-Agent v1 (vla/openfly_server.py) as the global planner, called every --openfly-every s;
+                    each discrete action becomes a --openfly-step-time s plan from the current pose
+  hover+dreamer     control: the plan is "hover at the start"; shows what Dreamer does on its own
 
 Every arm uses the same dynamics, renderer and crash rule (env.py). Motion vs instruction uses the rules of
 ../follow/analyze_follow.py on the flown path up to the end or the crash.
@@ -36,6 +39,7 @@ from plans import SAMPLES_EVAL, SLOT_T, instruction_prior, load_teacher, rel_to_
 from analyze_follow import FLOWN_OK  # noqa: E402
 
 ARMS = ("teacher+track", "diffwam+track", "prior+dreamer", "diffwam+dreamer", "diffwam+dreamer+mpc")
+OPENFLY_ARMS = ("openfly+track", "openfly+dreamer", "openfly+dreamer+mpc")  # OpenFly-Agent v1 as the global planner
 EVAL_TO_TRAIN_MOTION = {"forward": "forward", "hallway": "forward", "doorway": "forward", "approach": "forward",
                         "approach+stop": "approach_stop", "turn left": "turn_left", "turn right": "turn_right",
                         "ascend": "ascend", "descend": "descend", "strafe right": "strafe_right"}
@@ -86,6 +90,13 @@ def main():
                     help="seconds between replans (0 = one plan from the start frame). diffwam arms ask wan_server.py "
                          "for features of the current onboard view; the plan takes effect after the measured Wan "
                          "latency (simulated time). prior arms restart the instruction prior from the current pose.")
+    ap.add_argument("--openfly-every", type=float, default=1.0,
+                    help="openfly arms: seconds between OpenFly-Agent calls (first call at t = 0)")
+    ap.add_argument("--openfly-step-time", type=float, default=1.0,
+                    help="seconds over which one OpenFly action (e.g. forward 0.5 m, turn 30 deg) is spread as a plan")
+    ap.add_argument("--openfly-scale", type=float, default=1 / 6, help="OpenFly 3 m outdoor unit -> 3 * scale m")
+    ap.add_argument("--openfly-prompt", choices=("wan", "nav"), default="wan")
+    ap.add_argument("--vla-root", default=os.path.join(HERE, "data", "vla_requests"))
     ap.add_argument("--wan-latency", type=float, default=0.0,
                     help="simulated Wan latency in s (0 = use the measured time of each request)")
     ap.add_argument("--wan-root", default=os.path.join(HERE, "data", "wan_requests"))
@@ -94,6 +105,15 @@ def main():
     from policy import DreamerPolicy
 
     tag = os.path.basename(os.path.dirname(args.ckpt)) + (f"_replan{args.replan_every:g}" if args.replan_every else "")
+    use_openfly = any(a.startswith("openfly") for a in args.arms)
+    if use_openfly:
+        sys.path.append(os.path.join(HERE, "..", "vla"))
+        from eval_zeroshot import ACTION_NAMES, NAV, ask_openfly, openfly_move
+
+        tag += f"_openfly{args.openfly_every:g}s_{args.openfly_prompt}"
+        while not os.path.exists(os.path.join(args.vla_root, "READY")):
+            print("waiting for vla/openfly_server.py ...", flush=True)
+            time.sleep(10)
     out_dir = args.out or os.path.join(HERE, "data", "deploy", tag)
     replanner = None
     if args.replan_every:
@@ -119,7 +139,9 @@ def main():
         starts, plans = [], []
         for s, arm, r in jobs:
             start = np.array(s["pose"], np.float32)
-            if arm.startswith("teacher"):
+            if arm.startswith("openfly") or arm.startswith("hover"):
+                rel = np.zeros((39, 4), np.float32)  # hover (control) / until OpenFly's first action arrives
+            elif arm.startswith("teacher"):
                 rel = dw[s["id"]]["teacher"]
             elif arm.startswith("diffwam"):
                 rel = dw[s["id"]]["rel"]
@@ -144,7 +166,13 @@ def main():
         pending = {}  # drone -> (activation step, world plan, time offset)
         wan_s = []
         big_cam = None
-        if replanner is not None:
+        is_of = np.array([arm.startswith("openfly") for _, arm, _ in jobs])
+        of_every = int(round(args.openfly_every / CTRL_DT))
+        of_hist = [[] for _ in range(n)]
+        of_done = np.zeros(n, bool)
+        of_actions = [[] for _ in range(n)]
+        of_s = []
+        if replanner is not None or use_openfly:
             from scenes import HouseCamera
 
             big_cam = HouseCamera(house, batch=8)
@@ -154,7 +182,7 @@ def main():
                 pose_now, _, _ = env.pose()
                 reqs = []
                 for i, (s, arm, r) in enumerate(jobs):
-                    if crashed[i] or arm.startswith("teacher"):
+                    if crashed[i] or arm.startswith(("teacher", "openfly", "hover")):
                         continue
                     if arm.startswith("prior"):
                         rel = instruction_prior(teacher_train, EVAL_TO_TRAIN_MOTION[s["motion"]])
@@ -171,6 +199,27 @@ def main():
                     lat = args.wan_latency or float(feats["seconds"])
                     wan_s.append(lat)
                     pending[i] = (k + int(math.ceil(lat / CTRL_DT)), (SLOT_T, rel_to_world(p0, rel)), lat)
+            if use_openfly and k % of_every == 0:
+                pose_now, _, _ = env.pose()
+                for i in np.flatnonzero(is_of & ~crashed & ~of_done):
+                    s, arm, r = jobs[i]
+                    rgb, _ = big_cam.render(pose_now[i:i + 1])
+                    of_hist[i].append(rgb[0])
+                    hist = [of_hist[i][max(0, len(of_hist[i]) - 1 - j)] for j in range(3)]
+                    text = s["instruction"] if args.openfly_prompt == "wan" else NAV[s["id"][:3]]
+                    out = ask_openfly(args.vla_root, f"{s['id']}_{arm.replace('+', '-')}_r{r}_k{k}", hist, text)
+                    of_actions[i].append(ACTION_NAMES[out["id"]])
+                    of_s.append(out["seconds"])
+                    p0 = pose_now[i].astype(float)
+                    if out["id"] == 0:  # stop: hold here for the rest of the flight
+                        of_done[i] = True
+                        target = p0
+                    else:
+                        target = openfly_move(p0, out["id"], args.openfly_scale)
+                        target[3] = p0[3] + math.atan2(math.sin(target[3] - p0[3]), math.cos(target[3] - p0[3]))
+                    pt = np.array([0.0, args.openfly_step_time, args.openfly_step_time + 10.0])
+                    pp = np.stack([p0, target, target]).astype(np.float32)
+                    pending[i] = (k + int(math.ceil(out["seconds"] / CTRL_DT)), (pt, pp), float(out["seconds"]))
             for i in [i for i, v in pending.items() if v[0] <= k]:
                 _, plan, lat = pending.pop(i)
                 env.plans[i] = plan
@@ -208,10 +257,16 @@ def main():
                     frames[i].append(obs["image"][i, ..., :3])
         for i, (s, arm, r) in enumerate(jobs):
             summ = summarize(np.array(s["pose"]), end_pose[i])
+            yaws = np.array(paths[i])[:, 3]
+            summ["yaw_deg"] = float(math.degrees(np.sum(wrap(np.diff(yaws)))))  # accumulated, not wrapped
             ok = bool(FLOWN_OK[s["motion"]](summ))
             path_len = float(np.sum(np.linalg.norm(np.diff(np.array(paths[i])[:, :3], axis=0), axis=1)))
+            y = summ["yaw_deg"]
+            sane = {"turn left": 15 < y <= 120, "turn right": -120 <= y < -15, "strafe right": abs(y) <= 45}.get(
+                s["motion"], abs(y) <= 90)
             rows.append({"id": s["id"], "motion": s["motion"], "arm": arm, "repeat": r, **summ, "flown_ok": ok,
-                         "path_m": path_len,
+                         "success_sane": bool(ok and not crashed[i] and sane),
+                         "path_m": path_len, "openfly_actions": of_actions[i] or None,
                          "collision": bool(crashed[i]), "crash_t": None if np.isnan(crash_t[i]) else float(crash_t[i]),
                          "success": ok and not crashed[i], "track_err_m": float(np.mean(track[i]))})
             if args.video and r == 0 and frames[i]:
@@ -220,12 +275,13 @@ def main():
                                  np.stack(frames[i]).repeat(4, 1).repeat(4, 2), fps=10, macro_block_size=1)
         ms = np.array(dreamer_ms)
         print(json.dumps({"house": house, "drones": n, "dreamer_ms": float(ms[:, 0].mean()),
-                          "shield_ms": float(ms[:, 1].mean()), "wan_s": float(np.mean(wan_s)) if wan_s else None}),
+                          "shield_ms": float(ms[:, 1].mean()), "wan_s": float(np.mean(wan_s)) if wan_s else None,
+                          "openfly_s": float(np.median(of_s)) if of_s else None}),
               flush=True)
         for arm in args.arms:
             rs = [x for x in rows if x["arm"] == arm and x["id"] in {s["id"] for s in here}]
             print(f"  {arm:22s} ok {sum(x['flown_ok'] for x in rs)}/{len(rs)} crash {sum(x['collision'] for x in rs)} "
-                  f"success {sum(x['success'] for x in rs)}", flush=True)
+                  f"success {sum(x['success'] for x in rs)} (sane yaw {sum(x['success_sane'] for x in rs)})", flush=True)
         del env, pol
         torch.cuda.empty_cache()
     summary = {}
@@ -233,6 +289,7 @@ def main():
         rs = [x for x in rows if x["arm"] == arm]
         summary[arm] = {"n": len(rs), "flown_ok": sum(x["flown_ok"] for x in rs),
                         "collisions": sum(x["collision"] for x in rs), "success": sum(x["success"] for x in rs),
+                        "success_sane": sum(x["success_sane"] for x in rs),
                         "track_err_m": float(np.mean([x["track_err_m"] for x in rs])),
                         "path_m": float(np.mean([x["path_m"] for x in rs])),
                         "crash_t_mean": float(np.mean([x["crash_t"] for x in rs if x["crash_t"] is not None]))

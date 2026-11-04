@@ -1,4 +1,4 @@
-# Wan2.2 global planner + DreamerV3 local planner (quick check)
+# Global planner (Wan2.2 + DiffWAM, or a VLA) + DreamerV3 local planner (quick check)
 
 Date: 2026-11-04 · Hardware: 1× H100 (GCP Slurm, gpu1) · Branch: `dreamer-local-planner` · Code: [`dreamer/`](../../../dreamer/)
 Chinese version below / 中文版见下方: [中文](#中文版)
@@ -7,6 +7,11 @@ Chinese version below / 中文版见下方: [中文](#中文版)
 > the full-scale training. It used **10% of the collected data** (16 of 160 house-rounds, 205k frames) and **short
 > training** (3k world-model steps + 2k actor-critic steps, about 25 min). Each test case was flown once, so
 > differences of 1–2 flights out of 20 are within noise. The full run (2.05M frames, 60k + 20k steps) comes next.
+
+**Headline:** under the same Dreamer local planner, the best global planner so far is **OpenFly-Agent v1, a 7B aerial
+VLA used zero-shot and called every 1 s**: **31/40 successes and 0 crashes**, at 0.18 s per call. Wan2.2 + DiffWAM
+gets 22/40 with 0 crashes at 3.2–4 s per plan. On its own, without Dreamer, OpenFly is weak (14/40, 6 crashes); with
+a simple tracker instead of Dreamer, DiffWAM gets 20/40 with 6 crashes. See [section 4](#4-alternative-global-planner-a-vla-openfly-agent-v1).
 
 ![overview](overview.png)
 
@@ -26,6 +31,7 @@ So the two are combined as a hierarchy:
 | Output | 38 poses over 5 s (where to go) | velocity + yaw-rate command (how to fly) |
 | Trained on | Wan imaginations, gen2pose teacher labels | real L2F flights in HyperDrone |
 | Rate / latency | every 3 s, ~3–4 s per plan | 10 Hz, 3.6 ms per decision |
+| Alternative | **OpenFly-Agent v1** (7B aerial VLA, zero-shot): last 3 frames + instruction → one discrete action, called every 1 s, 0.18 s per call ([section 4](#4-alternative-global-planner-a-vla-openfly-agent-v1)) | same Dreamer |
 
 The two models are combined by **conditioning, not averaging**: Dreamer's policy takes Wan's waypoints as input and
 decides the command. Averaging a wrong command with a right one would give a half-wrong one.
@@ -46,6 +52,8 @@ flowchart LR
         I0["onboard frame I0 + instruction"] --> WAN["Wan2.2 server<br/>DiffWAM features, steps 0-3"]
         WAN --> HEAD["DiffWAM readout head"]
         HEAD --> PLAN["global plan: 38 poses / 5 s"]
+        I0 -.->|"alternative, every 1 s"| VLA["OpenFly-Agent v1 (7B VLA)<br/>last 3 frames -> 1 action"]
+        VLA -.->|"action -> 1 s plan"| PLAN
         PLAN --> DRM["Dreamer local planner<br/>(+ optional world-model shield)"]
         AC --> DRM
         DRM --> CTRL["v_fwd, v_left, v_up, yaw rate<br/>-> carrot setpoint -> RAPTOR"]
@@ -182,7 +190,83 @@ Onboard videos: [`flights/`](flights/) — e.g. ascend:
 Wan latency per replan: 3.9–4.0 s (GPU shared with the flight process). Six cases are too few to rank the arms; the
 point of this run is that closed-loop replanning works end to end.
 
-## 4. What the quick check shows
+## 4. Alternative global planner: a VLA (OpenFly-Agent v1)
+
+Wan2.2 + DiffWAM takes 3.2–4 s per plan. I tested whether an off-the-shelf vision-language-action model could be the
+global planner instead. Full details: [VLA report](../vla_zeroshot/README.md).
+
+**Which VLA:** **OpenFly-Agent v1** (`IPEC-COMMUNITY/openfly-agent-7b`) is the only aerial VLA with released
+weights. It is OpenVLA-7B (Llama-2 + DINOv2/SigLIP) trained on outdoor aerial navigation. OpenFlyV2 (1B) has no
+weights yet. The small VLAs (SmolVLA, MiniVLA, VLA-Adapter) output robot-arm motions, so they cannot be used zero-shot.
+
+| | Wan2.2 + DiffWAM | OpenFly-Agent v1 |
+|---|---|---|
+| Input | I0 (832×480) + instruction | current + 2 previous frames (224×224) + instruction in a Llama-2 chat prompt |
+| Output | 38 poses over 5 s | one of 10 discrete actions: stop, forward 1/2/3 units, turn ±30°, up/down, left/right (3 m outdoors, scaled to 0.5 m indoors) |
+| Time per call (H100) | 3.2–4.0 s | 0.18 s (about 5 Hz), 15 GB in bf16 |
+
+To get any movement out of the model I had to fix three mismatches between OpenFly's released `eval.py` and its
+training code: the chat prompt, the frame order, and the action decoding (exact matching turned "forward 5 m" into
+"stop").
+
+### 4.1 Global planner alone (kinematic, 20 cases)
+
+| Planner | Correct motion | Crashes | Success | Success, plausible rotation | Model time per flight |
+|---|---:|---:|---:|---:|---:|
+| Wan2.2 + DiffWAM | 13/20 | 3 | **10** | **10** | 3.2–4.0 s (1 call) |
+| OpenFly, Wan prompt | 12/20 | 6 | 8 | 4 | 1.3 s (~7 calls) |
+| OpenFly, navigation prompt | 8/20 | 6 | 6 | 2 | 1.3 s (~7 calls) |
+
+On its own, OpenFly knows "forward", "up" and "through the door". It overshoots turns (240–300° when 30–90° was asked),
+spins in place on "approach and stop", never descends, and often stops at once indoors.
+
+### 4.2 With the Dreamer local planner (L2F dynamics, 20 cases × 2 repeats)
+
+OpenFly is called every 1 s (6 calls per 6 s flight). Each action becomes a 1 s plan from the current pose, and the new
+plan takes effect after OpenFly's 0.18 s latency in simulated time. Dreamer flies the plan at 10 Hz.
+
+![global planners](global_planners.png)
+
+| Global planner + local planner | Correct motion | Crashes | **Success** | Distance to plan |
+|---|---:|---:|---:|---:|
+| DiffWAM (1 plan) + tracker | 26/40 | 6 | 20 | 0.10 m |
+| DiffWAM (1 plan) + Dreamer | 22/40 | 0 | 22 | 0.55 m |
+| OpenFly every 1 s + tracker | 18/40 | 6 | 14 | 0.18 m |
+| **OpenFly every 1 s + Dreamer** | **31/40** | **0** | **31** | 0.27 m |
+| OpenFly every 1 s + Dreamer + shield | 29/40 | 1 | 28 | 0.28 m |
+| *control: "hover" plan + Dreamer* | 5/40 | 0 | 5 | 0.33 m |
+| *control: instruction prior + Dreamer* | 21/40 | 3 | 18 | 0.32 m |
+
+Successes per instruction (of 4 flights each):
+
+| | forward | hallway | doorway | turn left | ascend | bed approach | turn right | strafe right | approach + stop | descend |
+|---|---|---|---|---|---|---|---|---|---|---|
+| DiffWAM + tracker | 4 | 0 | 2 | 2 | 0 | 4 | 4 | 0 | 4 | 0 |
+| DiffWAM + Dreamer | 4 | 0 | 2 | 0 | 4 | 4 | 4 | 0 | 4 | 0 |
+| OpenFly + tracker | 0 | 0 | 4 | 0 | 0 | 4 | 4 | 0 | 0 | 0 |
+| **OpenFly + Dreamer** | 4* | 4 | 4 | 0 | 4 | 4 | 4 | 0 | 4 | 3 |
+| hover + Dreamer (control) | 4* | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+
+\* Forward passes at > 0.5 m, and Dreamer drifts 0.5–0.7 m forward even when told to hover, so the forward column
+says nothing about the planners.
+
+Videos: [ascend, OpenFly + tracker into the ceiling](../vla_zeroshot/s05_ascend_seed0_openfly+track.mp4) vs
+[OpenFly + Dreamer](../vla_zeroshot/s05_ascend_seed0_openfly+dreamer.mp4) ·
+[doorway, OpenFly + Dreamer](../vla_zeroshot/s03_doorway_seed0_openfly+dreamer.mp4).
+
+**What this shows**
+- **Frequent, rough plans plus a learned local planner work best.** OpenFly's small actions every second keep
+  correcting the course, and Dreamer turns them into smooth, safe flight. It also damps OpenFly's big errors: it does
+  not follow a 300° spin or a climb into the ceiling.
+- **Dreamer is following the plans,** not flying on its own: with a hover plan it passes only 5/40.
+- **Caveats:**
+  - The motion rules are lenient. Ascend and descend passed with only 0.2 m of motion, and approach + stop passed by
+    drifting forward while OpenFly was only turning.
+  - Turn left and strafe right fail for every arm.
+  - OpenFly is deterministic, so its 4 flights per instruction are 2 distinct action sequences × 2 Dreamer runs.
+  - The 1/6 unit scaling is my choice, and the Dreamer is the quick-check model.
+
+## 5. What the quick check shows
 
 1. **The workflow runs end to end:** collection → 200M world model → actor-critic → Dreamer flying Wan/DiffWAM plans
    in L2F dynamics → live Wan replanning.
@@ -193,8 +277,10 @@ point of this run is that closed-loop replanning works end to end.
 3. **Speed fits a local planner:** 3.6 ms per Dreamer decision (16 ms with the shield) against ~3.5 s per Wan plan.
 4. **Weak spots:** strafe right (only the teacher plan gets one of the two), turn left seed 1 and descend seed 0 fail
    for every arm, so there the global plan is the limit, not the local planner. Wan rarely imagines sideways motion.
+5. **The global planner can be much faster:** a zero-shot 7B VLA called every second (0.18 s per call) under the same
+   Dreamer beat one Wan2.2 + DiffWAM plan, 31/40 against 22/40 successes, with 0 crashes for both (section 4).
 
-## 5. Bug found during the check (fixed)
+## 6. Bug found during the check (fixed)
 
 The first two quick checks gave identical Dreamer flights for different plans. The cause was a bug in my code: when
 `torch.multinomial` was replaced by Gumbel-max sampling for `torch.compile`, a misplaced bracket
@@ -213,13 +299,16 @@ constant and the world model never saw the observations. My first diagnosis (ima
 
 The stopped 200M full run had the same bug, so it will restart from scratch.
 
-## 6. Next steps
+## 7. Next steps
 
 1. Full run: all 2.05M frames, 60k world-model steps (~4 h), then 20k actor-critic steps (~2 h).
 2. One online round: collect with Dreamer's own policy in the training houses, fine-tune (~1.5 h).
 3. Evaluation with 3 repeats per case, single plan and replanning; add test cases where the Wan plan goes through an
    obstacle.
 4. If Dreamer still under-moves: raise the tracking part of the reward, or give the actor the waypoints directly.
+5. Global planner: repeat the OpenFly + Dreamer comparison with the full Dreamer and a stricter motion rule (flown
+   displacement against the expected one); fine-tune a small VLA (SmolVLA 0.45B) on the Wan teacher plans; test Wan
+   with faster replanning (every 1–2 s) for a fair comparison of the replanning rate.
 
 ## Reproduce
 
@@ -234,6 +323,7 @@ python deploy_combined.py --ckpt data/runs/ac200m/last.pt --repeats 3 --video
 python wan_server.py &   # in env sakana_dreamer
 python deploy_combined.py --ckpt data/runs/ac200m/last.pt --replan-every 3 --seconds 9
 # this quick check: bash quick_check3.sh ; figures: python make_figures.py --out <dir>
+# VLA global planner (env sakana_vla for the server): bash ../vla/run_zeroshot.sh ; bash ../vla/run_openfly_dreamer.sh
 ```
 
 Data (32 GB), checkpoints and full videos are git-ignored (`dreamer/data/`).
@@ -242,13 +332,17 @@ Data (32 GB), checkpoints and full videos are git-ignored (`dreamer/data/`).
 
 ## 中文版
 
-# Wan2.2 全局规划 + DreamerV3 局部规划（小规模检查）
+# 全局规划（Wan2.2 + DiffWAM，或 VLA）+ DreamerV3 局部规划（小规模检查）
 
 日期：2026-11-04 · 硬件：1× H100（GCP Slurm，gpu1）· 分支：`dreamer-local-planner` · 代码：[`dreamer/`](../../../dreamer/)
 
 > **状态：这是小规模检查，不是最终结果。** 目的是在完整训练之前把整个工作流从头到尾跑通。只用了**约 10% 的数据**
 > （160 个房子轮次中的 16 个，20.5 万帧），**训练时间很短**（世界模型 3000 步 + actor-critic 2000 步，约 25 分钟）。
 > 每个测试场景只飞了一次，所以 20 次中差 1–2 次属于噪声范围。下一步是完整规模训练（205 万帧，6 万 + 2 万步）。
+
+**要点：** 在同一个 Dreamer 局部规划器之下，目前最好的全局规划器是 **OpenFly-Agent v1——一个零样本使用、每 1 秒调用一次的
+7B 空中 VLA**：**40 次中成功 31 次、0 次碰撞**，每次调用 0.18 秒。Wan2.2 + DiffWAM 是 22/40、0 次碰撞，每个计划 3.2–4 秒。
+不加 Dreamer 时 OpenFly 本身很弱（14/40，6 次碰撞）；DiffWAM 配简单跟踪器（不用 Dreamer）是 20/40，6 次碰撞。见第 4 节。
 
 总览图见本页顶部（overview.png）。
 
@@ -341,7 +435,54 @@ AUC 0.79。想象的前约 1 秒能保持房间结构（墙、地板、大件家
 每次重新规划的 Wan 延迟为 3.9–4.0 秒（GPU 与飞行进程共用）。6 个场景太少，不足以给方案排名；这次的目的是证明闭环重新规划
 能从头到尾跑通。
 
-### 4. 小规模检查说明了什么
+### 4. 另一种全局规划器：VLA（OpenFly-Agent v1）
+
+Wan2.2 + DiffWAM 每个计划要 3.2–4 秒。我测试了现成的视觉-语言-动作模型（VLA）能否代替它作为全局规划器。完整细节见
+[VLA 报告](../vla_zeroshot/README.md)。
+
+**用的是哪个 VLA：** **OpenFly-Agent v1**（`IPEC-COMMUNITY/openfly-agent-7b`）是唯一有公开权重的空中 VLA。它是 OpenVLA-7B
+（Llama-2 + DINOv2/SigLIP），在室外空中导航数据上训练。OpenFlyV2（1B）还没有权重；小型 VLA（SmolVLA、MiniVLA、
+VLA-Adapter）输出的是机械臂动作，无法零样本使用。
+
+| | Wan2.2 + DiffWAM | OpenFly-Agent v1 |
+|---|---|---|
+| 输入 | I0（832×480）+ 指令 | 当前帧 + 前 2 帧（224×224）+ Llama-2 对话格式的指令 |
+| 输出 | 5 秒内 38 个位姿 | 10 个离散动作之一：停止、前进 1/2/3 个单位、转 ±30°、上/下、左/右（室外 3 m，室内缩放为 0.5 m） |
+| 每次调用耗时（H100） | 3.2–4.0 秒 | 0.18 秒（约 5 Hz），bf16 下占 15 GB |
+
+为了让模型动起来，我修正了 OpenFly 官方 `eval.py` 与其训练代码之间的三处不一致：对话格式、帧的顺序、动作解码（完全匹配会把
+"前进 5 m"变成"停止"）。
+
+**4.1 单独作为全局规划器**（运动学飞行，20 个场景）：Wan2.2 + DiffWAM 成功 10 次、碰撞 3 次；OpenFly 用 Wan 指令成功 8 次
+（转角合理的只有 4 次）、碰撞 6 次；用导航指令成功 6 次（转角合理的 2 次）、碰撞 6 次。单独使用时，OpenFly 懂"前进""上升"
+"穿过门"，但转弯会过头（要求 30–90° 时转 240–300°），"接近并停下"时原地打转，不会下降，在室内经常一开始就停住。
+
+**4.2 配合 Dreamer 局部规划器**（L2F 动力学，20 个场景 × 2 次）：OpenFly 每 1 秒调用一次（每次 6 秒飞行共 6 次），每个动作
+变成从当前位姿出发的 1 秒计划，新计划在 OpenFly 的 0.18 秒延迟（按模拟时间计）后生效，Dreamer 以 10 Hz 执行。
+
+| 全局规划 + 局部规划 | 方向正确 | 碰撞 | **成功** | 离计划距离 |
+|---|---:|---:|---:|---:|
+| DiffWAM（单次计划）+ 跟踪器 | 26/40 | 6 | 20 | 0.10 m |
+| DiffWAM（单次计划）+ Dreamer | 22/40 | 0 | 22 | 0.55 m |
+| OpenFly 每 1 秒 + 跟踪器 | 18/40 | 6 | 14 | 0.18 m |
+| **OpenFly 每 1 秒 + Dreamer** | **31/40** | **0** | **31** | 0.27 m |
+| OpenFly 每 1 秒 + Dreamer + 安全检查 | 29/40 | 1 | 28 | 0.28 m |
+| *对照："悬停"计划 + Dreamer* | 5/40 | 0 | 5 | 0.33 m |
+| *对照：指令先验 + Dreamer* | 21/40 | 3 | 18 | 0.32 m |
+
+各指令的成功次数见英文版表格。
+
+**说明了什么**
+- **频繁的粗略计划 + 学出来的局部规划器效果最好。** OpenFly 每秒的小步动作不断修正方向，Dreamer 把它们变成平滑、安全的
+  飞行；OpenFly 的大错误（原地转 300°、一直爬升撞天花板）也被 Dreamer 削弱了。
+- **Dreamer 确实在跟随计划**，不是自己乱飞：给"悬停"计划时只成功 5/40。
+- **注意事项：**
+  - 运动规则比较宽松：上升和下降只动了 0.2 m 就算通过；"接近并停下"能通过，是因为 OpenFly 只在转向时 Dreamer 向前漂移了。
+  - 左转和右平移对所有方案都失败。
+  - OpenFly 是确定性的，所以每条指令的 4 次飞行只有 2 个不同的动作序列 × 2 次 Dreamer 飞行。
+  - 单位缩放 1/6 是我选的；Dreamer 是小规模检查的模型。
+
+### 5. 小规模检查说明了什么
 
 1. **工作流能从头到尾跑通：** 数据采集 → 2 亿参数世界模型 → actor-critic → Dreamer 在 L2F 动力学中跟随 Wan/DiffWAM 计划
    → Wan 在线重新规划。
@@ -351,8 +492,10 @@ AUC 0.79。想象的前约 1 秒能保持房间结构（墙、地板、大件家
 3. **速度适合做局部规划器：** Dreamer 每次决策 3.6 ms（加安全检查 16 ms），而 Wan 每个计划约 3.5 秒。
 4. **薄弱的任务：** 右平移（只有老师计划做对了两次中的一次）、左转 seed 1、下降 seed 0 对所有方案都失败，瓶颈在
    全局计划，不在局部规划器。Wan 很少想象出侧向运动。
+5. **全局规划器可以快得多：** 在同一个 Dreamer 之下，零样本的 7B VLA 每秒调用一次（每次 0.18 秒），比一次 Wan2.2 + DiffWAM
+   计划的效果更好：成功 31/40 对 22/40，两者都是 0 次碰撞（第 4 节）。
 
-### 5. 检查中发现并修复的 bug
+### 6. 检查中发现并修复的 bug
 
 前两次小规模检查里，不同计划下 Dreamer 飞出的路径完全相同。原因是我代码里的 bug：为了能用 `torch.compile`，我把
 `torch.multinomial` 改写成 Gumbel-max 采样，括号放错了位置（`-torch.log(U).clamp_min(1e-20)`），产生 NaN 噪声，
@@ -370,9 +513,11 @@ AUC 0.79。想象的前约 1 秒能保持房间结构（墙、地板、大件家
 
 之前停掉的 2 亿参数完整训练用的也是有 bug 的代码，所以要从头重新训练。
 
-### 6. 下一步
+### 7. 下一步
 
 1. 完整训练：全部 205 万帧，世界模型 6 万步（约 4 小时），然后 actor-critic 2 万步（约 2 小时）。
 2. 一轮在线训练：在训练房子里用 Dreamer 自己的策略采数据，再微调（约 1.5 小时）。
 3. 评估：每个场景飞 3 次，分别测只规划一次和重新规划两种情况；并加入 Wan 计划穿过障碍物的测试场景。
 4. 如果 Dreamer 仍然动得不够：提高奖励中跟随计划的权重，或者把航点直接输入 actor。
+5. 全局规划器：用完整训练的 Dreamer 和更严格的运动规则（比较实际位移与期望位移）重做 OpenFly + Dreamer 的比较；用 Wan 老师
+   计划微调一个小型 VLA（SmolVLA 0.45B）；测试 Wan 更频繁地重新规划（每 1–2 秒），以便公平比较重新规划的频率。
